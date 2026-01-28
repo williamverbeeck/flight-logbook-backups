@@ -47,32 +47,89 @@ def export_logbook_pdf(df):
     c = canvas.Canvas(file_path, pagesize=A4)
     width, height = A4
 
-    x_margin = 30
+    x = 30
     y = height - 40
+    line_height = 11
+
+    def new_page():
+        nonlocal y
+        c.showPage()
+        c.setFont("Helvetica", 8)
+        y = height - 40
 
     # Titel
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(x_margin, y, "EASA Flight Logbook")
-    y -= 25
+    c.drawString(x, y, "EASA Flight Logbook")
+    y -= 20
 
     c.setFont("Helvetica", 8)
 
     for _, row in df.iterrows():
-        line = (
+        if y < 120:
+            new_page()
+
+        # Line 1 – Route & aircraft
+        c.drawString(
+            x, y,
             f"{row['DATE']} | "
             f"{row['DEP PLACE']} {row['DEP TIME']} → "
             f"{row['ARR PLACE']} {row['ARR TIME']} | "
-            f"TT: {row['TOTAL FLIGHT TIME']} | "
+            f"{row['TYPE']} {row['REG']}"
+        )
+        y -= line_height
+
+        # Line 2 – Operation & totals
+        c.drawString(
+            x, y,
+            f"SE: {row['SE']}  "
+            f"ME: {row['ME']}  "
+            f"MP: {row['MP']}  "
+            f"TT: {row['TOTAL FLIGHT TIME']}  "
             f"PIC: {row['PIC NAME']}"
         )
+        y -= line_height
 
-        c.drawString(x_margin, y, line)
-        y -= 12
+        # Line 3 – Function times
+        c.drawString(
+            x, y,
+            f"PIC: {row['PIC']}  "
+            f"COP: {row['COP']}  "
+            f"DUAL: {row['DUAL']}  "
+            f"INSTR: {row['INSTR']}"
+        )
+        y -= line_height
 
-        if y < 40:
-            c.showPage()
-            c.setFont("Helvetica", 8)
-            y = height - 40
+        # Line 4 – Operational conditions
+        c.drawString(
+            x, y,
+            f"NIGHT: {row['NIGHT TIME']}  "
+            f"IFR: {row['IFR TIME']}  "
+            f"LDG DAY: {row['LDG DAY']}  "
+            f"LDG NIGHT: {row['LDG NIGHT']}"
+        )
+        y -= line_height
+
+        # Line 5 – FSTD
+        if row["FSTD TYPE"]:
+            c.drawString(
+                x, y,
+                f"FSTD: {row['FSTD TYPE']}  "
+                f"TIME: {row['FSTD TIME']}"
+            )
+            y -= line_height
+
+        # Line 6 – Remarks
+        if row["REMARKS AND ENDORSEMENTS"]:
+            c.drawString(
+                x, y,
+                f"Remarks: {row['REMARKS AND ENDORSEMENTS']}"
+            )
+            y -= line_height
+
+        # Separator
+        y -= 4
+        c.line(x, y, width - 30, y)
+        y -= 10
 
     c.save()
     return file_path
