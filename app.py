@@ -88,10 +88,10 @@ if page == "Add Flight":
 
     with st.form("flight_form"):
 
+        st.markdown("### Route & Timing")
+        
         # 🗓️ Flight date
         flight_date = st.date_input("Flight Date", date.today())
-
-        st.markdown("### Route & Timing")
 
         col_left, col_right = st.columns(2)
 
@@ -107,16 +107,13 @@ if page == "Add Flight":
             arrival = st.text_input("Arrival Airport")
             arr_time = st.time_input("Arrival Time")
 
-        # ⏱ Block times
-        col_bt1, col_bt2 = st.columns(2)
-        block_off = col_bt1.time_input("Block Off")
-        block_on = col_bt2.time_input("Block On")
-
         st.markdown("### Aircraft")
 
         col_a1, col_a2 = st.columns(2)
         aircraft_type = col_a1.text_input("Aircraft Type (e.g. C172)")
         registration = col_a2.text_input("Registration")
+        is_single_engine = st.checkbox("Single Engine Aircraft")
+        is_fstd = st.checkbox("Flight Training Simulation Device (FSTD / Simulator)")
 
         st.markdown("### Pilot & Operation")
 
@@ -136,47 +133,68 @@ if page == "Add Flight":
             ]
         )
 
-        flight_type = st.selectbox(
-            "Flight Type",
-            ["VFR", "IFR", "Y (IFR → VFR)", "Z (VFR → IFR)", "Z2 (VFR → IFR → VFR)"]
-        )
+        pic_name = st.text_input("PIC Name")
 
-        st.markdown("### Approaches & Landings")
+        # flight_type = st.selectbox(
+        #     "Flight Type",
+        #     ["VFR", "IFR", "Y (IFR → VFR)", "Z (VFR → IFR)", "Z2 (VFR → IFR → VFR)"]
+        # )
 
-        approach_type = st.selectbox(
-            "Approach Type",
-            [
-                "None",
-                "Visual",
-                "ASR/SRA",
-                "LOC",
-                "LDA",
-                "LNAV",
-                "LP",
-                "NDB",
-                "VDF",
-                "VOR",
-                "TACAN",
-                "Circling",
-                "Sidestep",
-                "PAR",
-                "LNAV/VNAV",
-                "LPV",
-                "ILS CAT I",
-                "ILS CAT II",
-                "ILS CAT III",
-                "MLS CAT I",
-                "MLS CAT II",
-                "MLS CAT III",
-                "GLS CAT I",
-                "RNP0.X"
-            ]
-        )
+        st.markdown("### Landings")
+
+        # approach_type = st.selectbox(
+        #     "Approach Type",
+        #     [
+        #         "None",
+        #         "Visual",
+        #         "ASR/SRA",
+        #         "LOC",
+        #         "LDA",
+        #         "LNAV",
+        #         "LP",
+        #         "NDB",
+        #         "VDF",
+        #         "VOR",
+        #         "TACAN",
+        #         "Circling",
+        #         "Sidestep",
+        #         "PAR",
+        #         "LNAV/VNAV",
+        #         "LPV",
+        #         "ILS CAT I",
+        #         "ILS CAT II",
+        #         "ILS CAT III",
+        #         "MLS CAT I",
+        #         "MLS CAT II",
+        #         "MLS CAT III",
+        #         "GLS CAT I",
+        #         "RNP0.X"
+        #     ]
+        # )
 
         col_l1, col_l2, col_l3 = st.columns(3)
         landings_day = col_l1.number_input("Day Landings", min_value=0, step=1)
         landings_night = col_l2.number_input("Night Landings", min_value=0, step=1)
-        approach_count = col_l3.number_input("Approach Count", min_value=0, step=1)
+        # approach_count = col_l3.number_input("Approach Count", min_value=0, step=1)
+
+        st.markdown("### Operational Conditions Time")
+
+        col_oc1, col_oc2 = st.columns(2)
+
+        night_time = col_oc1.number_input(
+            "Night (h)",
+            min_value=0.0,
+            step=0.1,
+            help="Time flown under night conditions"
+        )
+
+        ifr_time = col_oc2.number_input(
+            "IFR (h)",
+            min_value=0.0,
+            step=0.1,
+            help="Time flown under IFR"
+        )
+
 
         remarks = st.text_area("Remarks")
 
@@ -185,8 +203,8 @@ if page == "Add Flight":
         if submitted:
             # ⏱ Block time calculation
             block_minutes = (
-                datetime.combine(date.today(), block_on)
-                - datetime.combine(date.today(), block_off)
+                datetime.combine(date.today(), arr_time)
+                - datetime.combine(date.today(), dep_time)
             ).total_seconds() / 60
 
             block_time = round(block_minutes / 60, 2)
@@ -194,6 +212,15 @@ if page == "Add Flight":
             # Automatic time attribution
             pic_time = block_time if pilot_function in ["PIC", "Student PIC", "PIC under supervision"] else 0
             dual_time = block_time if pilot_function == "DUAL" else 0
+            instr_time = block_time if pilot_function in ["Instructor", "Examiner"] else 0
+            cop_time = block_time if pilot_function in ["SIC", "Third Pilot"] else 0
+
+            # Multipilot determination (automatic)
+            multi_pilot_roles = ["SIC", "PIC under supervision", "Third Pilot"]
+            is_multi_pilot = pilot_function in multi_pilot_roles
+
+            # Time allocation
+            multi_pilot_time = block_time if is_multi_pilot else 0
 
             session = SessionLocal()
             flight = Flight(
@@ -204,25 +231,34 @@ if page == "Add Flight":
                 dep_time=dep_time,
                 arr_time=arr_time,
 
-                block_off=block_off,
-                block_on=block_on,
                 block_time=block_time,
 
                 aircraft_type=aircraft_type,
                 registration=registration,
 
                 pilot_function=pilot_function,
-                flight_type=flight_type,
+                # flight_type=flight_type,
 
-                approach_type=approach_type,
-                approach_count=approach_count,
+                # approach_type=approach_type,
+                # approach_count=approach_count,
 
                 flight_time=block_time,
                 pic_time=pic_time,
+                cop_time=cop_time,
                 dual_time=dual_time,
+                instr_time=instr_time,
+                pic_name=pic_name,
+                is_fstd=is_fstd,
+
+                is_single_engine=is_single_engine,
+                is_multi_pilot=is_multi_pilot,
+                multi_pilot_time=multi_pilot_time,
 
                 landings_day=landings_day,
                 landings_night=landings_night,
+
+                night_time=night_time,
+                ifr_time=ifr_time,
 
                 remarks=remarks
             )
@@ -235,7 +271,8 @@ if page == "Add Flight":
 
 
 if page == "Logbook":
-    st.header("Flight Logbook")
+    
+    st.header("EASA Flight Logbook")
 
     session = SessionLocal()
     flights = session.query(Flight).order_by(Flight.date.desc()).all()
@@ -244,51 +281,90 @@ if page == "Logbook":
     if not flights:
         st.info("No flights logged yet.")
     else:
-        data = []
+        rows = []
+
         for f in flights:
-            data.append({
-                "Date": f.date,
-                "From": f.departure,
-                "To": f.arrival,
-                "Aircraft": f.aircraft_type,
-                "Reg": f.registration,
-                "Block Time": f.block_time,
-                "Function": f.pilot_function,
-                "PIC": f.pic_time,
-                "Dual": f.dual_time,
-                "Day Ldg": f.landings_day,
-                "Night Ldg": f.landings_night,
-                "Remarks": f.remarks
+            rows.append({
+                # DATE
+                "DATE": f.date.strftime("%d/%m/%Y") if f.date else "",
+
+                # DEPARTURE
+                "DEP PLACE": f.departure or "",
+                "DEP TIME": f.dep_time.strftime("%H:%M") if f.dep_time else "",
+
+                # ARRIVAL
+                "ARR PLACE": f.arrival or "",
+                "ARR TIME": f.arr_time.strftime("%H:%M") if f.arr_time else "",
+
+                # AIRCRAFT
+                "TYPE": f.aircraft_type or "",
+                "REG": f.registration or "",
+
+                # SINGLE / MULTI PILOT
+                # OPERATION CATEGORY (EXACTLY ONE)
+                "SE": "✓" if not f.is_multi_pilot and f.is_single_engine else "",
+                "ME": "✓" if not f.is_multi_pilot and not f.is_single_engine else "",
+                "MP": f.block_time if f.is_multi_pilot else "",
+
+
+                # TOTAL TIME
+                "TOTAL FLIGHT TIME": f"{f.block_time:.2f}" if f.block_time else "0.00",
+
+                # PIC NAME
+                "PIC NAME": f.pic_name or "SELF",
+
+                # LANDINGS
+                "LDG DAY": f.landings_day or 0,
+                "LDG NIGHT": f.landings_night or 0,
+
+                # OPERATIONAL CONDITIONS
+                "NIGHT TIME": f.night_time or "",
+                "IFR TIME": f.ifr_time or "",
+
+                # PILOT FUNCTION TIME
+                "PIC": f.pic_time or "",
+                "COP": f.cop_time or "",
+                "DUAL": f.dual_time or "",
+                "INSTR": f.instr_time or "",
+
+                # FSTD
+                "FSTD TYPE": f.aircraft_type if f.is_fstd else "",
+                "FSTD TIME": f"{f.block_time:.2f}" if f.is_fstd else "",
+
+
+                # REMARKS
+                "REMARKS AND ENDORSEMENTS": f.remarks or ""
             })
 
-        df = pd.DataFrame(data)
-        st.dataframe(df, use_container_width=True)
+        df = pd.DataFrame(rows)
 
-        csv_data = df.to_csv(index=False).encode("utf-8")
-
-        st.download_button(
-            label="📤 Export CSV",
-            data=csv_data,
-            file_name="flight_logbook.csv",
-            mime="text/csv"
+        # Display like a logbook, not like analytics
+        st.dataframe(
+            df,
+            use_container_width=True,
+            hide_index=True
         )
 
-        if st.button("📄 Export PDF"):
-            pdf_path = export_logbook_pdf(df)
-            with open(pdf_path, "rb") as f:
-                st.download_button(
-                    label="⬇️ Download PDF",
-                    data=f,
-                    file_name="flight_logbook.pdf",
-                    mime="application/pdf"
-        )
-
+        # === TOTALS (OPTIONAL, BELOW TABLE) ===
         st.subheader("Totals")
 
         col1, col2, col3 = st.columns(3)
-        col1.metric("Total Flight Time", f"{df['Flight Time'].sum():.1f} h")
-        col2.metric("Total PIC", f"{df['PIC'].sum():.1f} h")
-        col3.metric("Total Dual", f"{df['Dual'].sum():.1f} h")
+
+        col1.metric(
+            "Total Flight Time",
+            f"{sum(f.block_time or 0 for f in flights):.2f} h"
+        )
+
+        col2.metric(
+            "Total PIC",
+            f"{sum(f.pic_time or 0 for f in flights):.2f} h"
+        )
+
+        col3.metric(
+            "Total Dual",
+            f"{sum(f.dual_time or 0 for f in flights):.2f} h"
+        )
+
 
 st.sidebar.markdown("---")
 if st.sidebar.button("Backup Logbook"):
