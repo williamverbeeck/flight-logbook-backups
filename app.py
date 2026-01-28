@@ -351,6 +351,34 @@ if page == "Logbook":
             hide_index=True
         )
 
+        st.markdown("### Export Logbook")
+
+        col_exp1, col_exp2 = st.columns(2)
+
+        # ---------- CSV EXPORT ----------
+        csv_data = df.to_csv(index=False).encode("utf-8")
+
+        with col_exp1:
+            st.download_button(
+                label="📤 Export CSV",
+                data=csv_data,
+                file_name="flight_logbook.csv",
+                mime="text/csv"
+            )
+
+        # ---------- PDF EXPORT ----------
+        with col_exp2:
+            if st.button("📄 Generate PDF"):
+                pdf_path = export_logbook_pdf(df)
+                with open(pdf_path, "rb") as f:
+                    st.download_button(
+                        label="⬇️ Download PDF",
+                        data=f,
+                        file_name="flight_logbook.pdf",
+                        mime="application/pdf"
+                    )
+
+
         # === TOTALS (OPTIONAL, BELOW TABLE) ===
         st.subheader("Totals")
 
