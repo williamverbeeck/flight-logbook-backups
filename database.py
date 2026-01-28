@@ -1,16 +1,21 @@
+import streamlit as st
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from models import Base
-import os
 
-os.makedirs("data", exist_ok=True)
-
-DATABASE_URL = "sqlite:///data/logbook.db"
+# Supabase database URL uit Streamlit secrets
+DATABASE_URL = st.secrets["DATABASE_URL"]
 
 engine = create_engine(
     DATABASE_URL,
-    connect_args={"check_same_thread": False}
+    pool_pre_ping=True
 )
 
-SessionLocal = sessionmaker(bind=engine)
-Base.metadata.create_all(engine)
+SessionLocal = sessionmaker(
+    autocommit=False,
+    autoflush=False,
+    bind=engine
+)
+
+# ⚠️ Alleen nodig bij eerste deploy (maakt tabellen aan)
+Base.metadata.create_all(bind=engine)
