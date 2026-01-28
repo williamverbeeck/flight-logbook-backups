@@ -10,6 +10,12 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
+PASSWORD = st.secrets["APP_PASSWORD"]
+pw = st.text_input("Password", type="password")
+if pw != PASSWORD:
+    st.error("Incorrect password")
+    st.stop()
+
 def auto_backup_and_push():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
     backup_file = f"backups/logbook_{timestamp}.db"
