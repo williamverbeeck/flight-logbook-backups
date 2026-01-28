@@ -16,6 +16,3 @@ SessionLocal = sessionmaker(
     autoflush=False,
     bind=engine
 )
-
-# ⚠️ Alleen nodig bij eerste deploy (maakt tabellen aan)
-Base.metadata.create_all(bind=engine)
