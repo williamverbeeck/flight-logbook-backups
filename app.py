@@ -47,21 +47,23 @@ def export_logbook_pdf(df):
     c = canvas.Canvas(file_path, pagesize=A4)
     width, height = A4
 
-    x_margin = 40
+    x_margin = 30
     y = height - 40
 
+    # Titel
     c.setFont("Helvetica-Bold", 12)
-    c.drawString(x_margin, y, "Personal Flight Logbook")
-    y -= 30
+    c.drawString(x_margin, y, "EASA Flight Logbook")
+    y -= 25
 
     c.setFont("Helvetica", 8)
 
     for _, row in df.iterrows():
         line = (
-            f"{row['Date']} | "
-            f"{row['Aircraft']} | "
-            f"{row['From']} → {row['To']} | "
-            f"{row['Flight Time']} h"
+            f"{row['DATE']} | "
+            f"{row['DEP PLACE']} {row['DEP TIME']} → "
+            f"{row['ARR PLACE']} {row['ARR TIME']} | "
+            f"TT: {row['TOTAL FLIGHT TIME']} | "
+            f"PIC: {row['PIC NAME']}"
         )
 
         c.drawString(x_margin, y, line)
