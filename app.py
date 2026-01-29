@@ -429,6 +429,27 @@ if page == "Logbook":
             hide_index=True
         )
 
+        # === TOTALS (OPTIONAL, BELOW TABLE) ===
+        st.subheader("Totals")
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric(
+            "Total Flight Time",
+            f"{sum(f.block_time or 0 for f in flights):.2f} h"
+        )
+
+        col2.metric(
+            "Total PIC",
+            f"{sum(f.pic_time or 0 for f in flights):.2f} h"
+        )
+
+        col3.metric(
+            "Total Dual",
+            f"{sum(f.dual_time or 0 for f in flights):.2f} h"
+        )
+
+
         st.markdown("### Export Logbook")
 
         col_exp1, col_exp2 = st.columns(2)
@@ -455,28 +476,6 @@ if page == "Logbook":
                         file_name="flight_logbook.pdf",
                         mime="application/pdf"
                     )
-
-
-        # === TOTALS (OPTIONAL, BELOW TABLE) ===
-        st.subheader("Totals")
-
-        col1, col2, col3 = st.columns(3)
-
-        col1.metric(
-            "Total Flight Time",
-            f"{sum(f.block_time or 0 for f in flights):.2f} h"
-        )
-
-        col2.metric(
-            "Total PIC",
-            f"{sum(f.pic_time or 0 for f in flights):.2f} h"
-        )
-
-        col3.metric(
-            "Total Dual",
-            f"{sum(f.dual_time or 0 for f in flights):.2f} h"
-        )
-
 
 st.sidebar.markdown("---")
 
