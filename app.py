@@ -11,7 +11,7 @@ from reportlab.pdfgen import canvas
 from supabase_client import supabase
 
 if "user_id" not in st.session_state:
-    st.session_state.user_id = None
+    st.session_state.user = None
 
 if not st.session_state.user:
     st.title("🔐 Login")
