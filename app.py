@@ -15,8 +15,10 @@ def require_login():
         st.session_state.user = None
 
     if not st.session_state.user:
+        col1, col2, col3 = st.columns([1, 2, 1])
+        with col2:
+            st.image("foto.png", width=400)
         st.title("🔐 Login")
-
         tab_login, tab_register = st.tabs(["Login", "Register"])
 
         with tab_login:
