@@ -1,5 +1,7 @@
 from sqlalchemy import Column, Integer, String, Float, Date, Time, Boolean
 from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.dialects.postgresql import UUID
+import uuid
 
 Base = declarative_base()
 
@@ -7,6 +9,10 @@ class Flight(Base):
     __tablename__ = "flights"
 
     id = Column(Integer, primary_key=True)
+
+    # 👤 Owner (Supabase user)
+    user_id = Column(UUID(as_uuid=True), nullable=True)
+
     date = Column(Date)
 
     # Aircraft & route
