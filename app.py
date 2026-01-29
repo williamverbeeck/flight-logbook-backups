@@ -8,28 +8,42 @@ import subprocess
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
+from supabase_client import supabase
 
-PASSWORD = st.secrets["APP_PASSWORD"]
+if "user_id" not in st.session_state:
+    st.session_state.user_id = None
 
-# Init auth state
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
-
-# --- LOGIN SCREEN ---
-if not st.session_state.authenticated:
+if not st.session_state.user:
     st.title("🔐 Login")
 
-    with st.form("login_form"):
-        pw = st.text_input("Password", type="password")
-        submitted = st.form_submit_button("Login")
+    tab_login, tab_register = st.tabs(["Login", "Register"])
 
-        if submitted:
-            if pw == PASSWORD:
-                st.session_state.authenticated = True
-                st.success("Login successful")
+    with tab_login:
+        email = st.text_input("Email")
+        password = st.text_input("Password", type="password")
+
+        if st.button("Login"):
+            res = supabase.auth.sign_in_with_password({
+                "email": email,
+                "password": password
+            })
+
+            if res.user:
+                st.session_state.user = res.user
                 st.rerun()
             else:
-                st.error("Incorrect password")
+                st.error("Login failed")
+
+    with tab_register:
+        email = st.text_input("New email")
+        password = st.text_input("New password", type="password")
+
+        if st.button("Create account"):
+            supabase.auth.sign_up({
+                "email": email,
+                "password": password
+            })
+            st.success("Account created. You can now log in.")
 
     st.stop()
 
@@ -489,5 +503,5 @@ st.sidebar.markdown("---")
 
 if st.session_state.get("authenticated"):
     if st.sidebar.button("🚪 Logout"):
-        st.session_state.authenticated = False
+        st.session_state.user = None
         st.rerun()
