@@ -11,10 +11,29 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 
 PASSWORD = st.secrets["APP_PASSWORD"]
-pw = st.text_input("Password", type="password")
-if pw != PASSWORD:
-    st.error("Incorrect password")
+
+# Init auth state
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+# --- LOGIN SCREEN ---
+if not st.session_state.authenticated:
+    st.title("🔐 Login")
+
+    with st.form("login_form"):
+        pw = st.text_input("Password", type="password")
+        submitted = st.form_submit_button("Login")
+
+        if submitted:
+            if pw == PASSWORD:
+                st.session_state.authenticated = True
+                st.success("Login successful")
+                st.rerun()
+            else:
+                st.error("Incorrect password")
+
     st.stop()
+
 
 def auto_backup_and_push():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -467,3 +486,8 @@ if st.sidebar.button("Backup Logbook"):
         f"backups/logbook_{timestamp}.db"
     )
     st.sidebar.success("Backup created")
+
+if st.session_state.get("authenticated"):
+    if st.sidebar.button("🚪 Logout"):
+        st.session_state.authenticated = False
+        st.rerun()
