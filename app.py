@@ -330,6 +330,7 @@ if page == "Add Flight":
 
             session = SessionLocal()
             flight = Flight(
+                user_id=st.session_state.user.id,
                 date=flight_date,
 
                 departure=departure,
@@ -381,7 +382,12 @@ if page == "Logbook":
     st.header("EASA Flight Logbook")
 
     session = SessionLocal()
-    flights = session.query(Flight).order_by(Flight.date.desc()).all()
+    flights = (
+    session.query(Flight)
+    .filter(Flight.user_id == st.session_state.user.id)
+    .order_by(Flight.date.desc())
+    .all()
+    )
     session.close()
 
     if not flights:
