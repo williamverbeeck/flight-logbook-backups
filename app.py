@@ -19,32 +19,40 @@ if not st.session_state.user:
     tab_login, tab_register = st.tabs(["Login", "Register"])
 
     with tab_login:
-    email = st.text_input("Email", key="login_email")
-    password = st.text_input("Password", type="password", key="login_pw")
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pw")
 
-    if st.button("Login"):
-        try:
-            res = supabase.auth.sign_in_with_password({
-                "email": email.strip(),
-                "password": password
-            })
-            st.write("Login response:", res)  # 👈 DEBUG
-            if res.user:
-                st.session_state.user = res.user
-                st.rerun()
-        except Exception as e:
-            st.error(f"Login failed: {e}")
+        if st.button("Login"):
+            try:
+                res = supabase.auth.sign_in_with_password({
+                    "email": email.strip(),
+                    "password": password
+                })
+                st.write("Login response:", res)  # tijdelijke debug
 
-    with tab_register:
-        email = st.text_input("New email")
-        password = st.text_input("New password", type="password")
+                if res.user:
+                    st.session_state.user = res.user
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Login failed: {e}")
 
-        if st.button("Create account"):
-            supabase.auth.sign_up({
-                "email": email,
-                "password": password
-            })
-            st.success("Account created. You can now log in.")
+    with tab_login:
+        email = st.text_input("Email", key="login_email")
+        password = st.text_input("Password", type="password", key="login_pw")
+
+        if st.button("Login"):
+            try:
+                res = supabase.auth.sign_in_with_password({
+                    "email": email.strip(),
+                    "password": password
+                })
+                st.write("Login response:", res)  # tijdelijke debug
+
+                if res.user:
+                    st.session_state.user = res.user
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Login failed: {e}")
 
     st.stop()
 
