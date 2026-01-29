@@ -36,23 +36,19 @@ if not st.session_state.user:
             except Exception as e:
                 st.error(f"Login failed: {e}")
 
-    with tab_login:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_pw")
+    with tab_register:
+        email = st.text_input("New email", key="reg_email")
+        password = st.text_input("New password", type="password", key="reg_pw")
 
-        if st.button("Login"):
+        if st.button("Create account"):
             try:
-                res = supabase.auth.sign_in_with_password({
+                supabase.auth.sign_up({
                     "email": email.strip(),
                     "password": password
                 })
-                st.write("Login response:", res)  # tijdelijke debug
-
-                if res.user:
-                    st.session_state.user = res.user
-                    st.rerun()
+                st.success("Account created. You can now log in.")
             except Exception as e:
-                st.error(f"Login failed: {e}")
+                st.error(f"Signup failed: {e}")
 
     st.stop()
 
