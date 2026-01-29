@@ -1,10 +1,9 @@
 import streamlit as st
-from datetime import date
 from database import SessionLocal
 from models import Flight
 import pandas as pd
 import shutil
-from datetime import datetime
+from datetime import datetime, timedelta, date
 import subprocess
 import os
 from reportlab.lib.pagesizes import A4
@@ -153,6 +152,16 @@ def export_logbook_pdf(df):
     c.save()
     return file_path
 
+def calculate_block_time(flight_date, dep_time, arr_time):
+    dep_dt = datetime.combine(flight_date, dep_time)
+    arr_dt = datetime.combine(flight_date, arr_time)
+
+    # Over midnight
+    if arr_dt <= dep_dt:
+        arr_dt += timedelta(days=1)
+
+    minutes = (arr_dt - dep_dt).total_seconds() / 60
+    return round(minutes / 60, 2)
 
 st.set_page_config(
     page_title="Flight Logbook",
@@ -286,12 +295,11 @@ if page == "Add Flight":
 
         if submitted:
             # ⏱ Block time calculation
-            block_minutes = (
-                datetime.combine(date.today(), arr_time)
-                - datetime.combine(date.today(), dep_time)
-            ).total_seconds() / 60
-
-            block_time = round(block_minutes / 60, 2)
+            block_time = calculate_block_time(
+                flight_date,
+                dep_time,
+                arr_time
+            )
 
             # Automatic time attribution
             pic_time = block_time if pilot_function in ["PIC", "Student PIC", "PIC under supervision"] else 0
