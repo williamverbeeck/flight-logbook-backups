@@ -479,13 +479,6 @@ if page == "Logbook":
 
 
 st.sidebar.markdown("---")
-if st.sidebar.button("Backup Logbook"):
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    shutil.copy(
-        "data/logbook.db",
-        f"backups/logbook_{timestamp}.db"
-    )
-    st.sidebar.success("Backup created")
 
 if st.session_state.get("authenticated"):
     if st.sidebar.button("🚪 Logout"):
