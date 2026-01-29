@@ -19,20 +19,21 @@ if not st.session_state.user:
     tab_login, tab_register = st.tabs(["Login", "Register"])
 
     with tab_login:
-        email = st.text_input("Email")
-        password = st.text_input("Password", type="password")
+    email = st.text_input("Email", key="login_email")
+    password = st.text_input("Password", type="password", key="login_pw")
 
-        if st.button("Login"):
+    if st.button("Login"):
+        try:
             res = supabase.auth.sign_in_with_password({
-                "email": email,
+                "email": email.strip(),
                 "password": password
             })
-
+            st.write("Login response:", res)  # 👈 DEBUG
             if res.user:
                 st.session_state.user = res.user
                 st.rerun()
-            else:
-                st.error("Login failed")
+        except Exception as e:
+            st.error(f"Login failed: {e}")
 
     with tab_register:
         email = st.text_input("New email")
