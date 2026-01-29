@@ -10,7 +10,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
 
-if "user_id" not in st.session_state:
+if "user" not in st.session_state:
     st.session_state.user = None
 
 if not st.session_state.user:
@@ -19,8 +19,8 @@ if not st.session_state.user:
     tab_login, tab_register = st.tabs(["Login", "Register"])
 
     with tab_login:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Password", type="password", key="login_pw")
+        login_email = st.text_input("Email", key="login_email_input")
+        login_password = st.text_input("Password", type="password", key="login_pw_input")
 
         if st.button("Login"):
             try:
@@ -37,8 +37,9 @@ if not st.session_state.user:
                 st.error(f"Login failed: {e}")
 
     with tab_register:
-        email = st.text_input("New email", key="reg_email")
-        password = st.text_input("New password", type="password", key="reg_pw")
+        reg_email = st.text_input("New email", key="register_email_input")
+        reg_password = st.text_input("New password", type="password", key="register_pw_input")
+
 
         if st.button("Create account"):
             try:
@@ -512,7 +513,7 @@ if page == "Logbook":
 
 st.sidebar.markdown("---")
 
-if st.session_state.get("authenticated"):
+if st.session_state.user:
     if st.sidebar.button("🚪 Logout"):
         st.session_state.user = None
         st.rerun()
