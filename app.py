@@ -10,8 +10,6 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
 
-require_login()
-
 def require_login():
     if "user" not in st.session_state:
         st.session_state.user = None
@@ -56,6 +54,7 @@ def require_login():
 
         st.stop()
 
+require_login()
 
 def auto_backup_and_push():
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
