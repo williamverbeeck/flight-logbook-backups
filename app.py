@@ -10,48 +10,51 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
 
-if "user" not in st.session_state:
-    st.session_state.user = None
+require_login()
 
-if not st.session_state.user:
-    st.title("🔐 Login")
+def require_login():
+    if "user" not in st.session_state:
+        st.session_state.user = None
 
-    tab_login, tab_register = st.tabs(["Login", "Register"])
+    if not st.session_state.user:
+        st.title("🔐 Login")
 
-    with tab_login:
-        login_email = st.text_input("Email", key="login_email_input")
-        login_password = st.text_input("Password", type="password", key="login_pw_input")
+        tab_login, tab_register = st.tabs(["Login", "Register"])
 
-        if st.button("Login"):
-            try:
-                res = supabase.auth.sign_in_with_password({
-                    "email": login_email.strip(),
-                    "password": login_password
-                })
-                st.write("Login response:", res)  # tijdelijke debug
+        with tab_login:
+            login_email = st.text_input("Email", key="login_email_input")
+            login_password = st.text_input("Password", type="password", key="login_pw_input")
 
-                if res.user:
-                    st.session_state.user = res.user
-                    st.rerun()
-            except Exception as e:
-                st.error(f"Login failed: {e}")
+            if st.button("Login"):
+                try:
+                    res = supabase.auth.sign_in_with_password({
+                        "email": login_email.strip(),
+                        "password": login_password
+                    })
+                    st.write("Login response:", res)  # tijdelijke debug
 
-    with tab_register:
-        reg_email = st.text_input("New email", key="register_email_input")
-        reg_password = st.text_input("New password", type="password", key="register_pw_input")
+                    if res.user:
+                        st.session_state.user = res.user
+                        st.rerun()
+                except Exception as e:
+                    st.error(f"Login failed: {e}")
+
+        with tab_register:
+            reg_email = st.text_input("New email", key="register_email_input")
+            reg_password = st.text_input("New password", type="password", key="register_pw_input")
 
 
-        if st.button("Create account"):
-            try:
-                supabase.auth.sign_up({
-                    "email": reg_email.strip(),
-                    "password": reg_password
-                })
-                st.success("Account created. You can now log in.")
-            except Exception as e:
-                st.error(f"Signup failed: {e}")
+            if st.button("Create account"):
+                try:
+                    supabase.auth.sign_up({
+                        "email": reg_email.strip(),
+                        "password": reg_password
+                    })
+                    st.success("Account created. You can now log in.")
+                except Exception as e:
+                    st.error(f"Signup failed: {e}")
 
-    st.stop()
+        st.stop()
 
 
 def auto_backup_and_push():
