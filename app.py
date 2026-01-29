@@ -25,8 +25,8 @@ if not st.session_state.user:
         if st.button("Login"):
             try:
                 res = supabase.auth.sign_in_with_password({
-                    "email": email.strip(),
-                    "password": password
+                    "email": login_email.strip(),
+                    "password": login_password
                 })
                 st.write("Login response:", res)  # tijdelijke debug
 
@@ -44,8 +44,8 @@ if not st.session_state.user:
         if st.button("Create account"):
             try:
                 supabase.auth.sign_up({
-                    "email": email.strip(),
-                    "password": password
+                    "email": reg_email.strip(),
+                    "password": reg_password
                 })
                 st.success("Account created. You can now log in.")
             except Exception as e:
