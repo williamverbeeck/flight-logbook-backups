@@ -10,6 +10,42 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
 from adsb import find_icao24_by_registration, fetch_flights_by_icao24
+import requests
+
+AIRCRAFT_LIST = {
+    "OO-SKA": {
+        "icao24": "44CD61",   # voorbeeld, vervang indien nodig
+        "type": "DA40 NG"
+    },
+    "OO-SKC": {
+        "icao24": "44CD63",
+        "type": "DA40 NG"
+    },
+    "OO-GQN": {
+        "icao24": "449E2E",
+        "type": "DA40 NG"
+    },
+    "OO-MAV": {
+        "icao24": "44B436",
+        "type": "DA40 NG"
+    },
+}
+
+def fetch_opensky_flights(icao24, flight_date):
+    start = int(datetime.combine(flight_date, datetime.min.time()).timestamp())
+    end = int(datetime.combine(flight_date, datetime.max.time()).timestamp())
+
+    url = (
+        "https://opensky-network.org/api/flights/aircraft"
+        f"?icao24={icao24}&begin={start}&end={end}"
+    )
+
+    response = requests.get(url, timeout=10)
+    if response.status_code != 200:
+        return []
+
+    return response.json()
+
 
 def require_login():
     if "user" not in st.session_state:
@@ -203,48 +239,56 @@ page = st.sidebar.radio(
 
 if page == "Add Flight":
     st.header("Add New Flight")
-        # ---------------- ADS-B IMPORT ----------------
+
     st.markdown("### 🛰️ ADS-B Import (optional)")
 
-    adsb_reg = st.text_input(
-        "Aircraft registration",
-        help="Example: OO-ABC"
+    selected_registration = st.selectbox(
+        "Aircraft",
+        options=list(AIRCRAFT_LIST.keys()),
+        key="adsb_aircraft"
     )
 
     adsb_date = st.date_input(
         "Flight date",
-        value=date.today()
+        value=date.today(),
+        key="adsb_date"
     )
 
     if st.button("🔍 Search ADS-B flights"):
-        icao24 = find_icao24_by_registration(adsb_reg)
+        icao24 = AIRCRAFT_LIST[selected_registration]["icao24"]
 
-        if not icao24:
-            st.error("Aircraft not found in ADS-B data")
+        flights = fetch_opensky_flights(icao24, adsb_date)
+
+        if not flights:
+            st.warning("No ADS-B flights found for this aircraft on this date.")
         else:
-            flights = fetch_flights_by_icao24(icao24, adsb_date)
+            st.session_state.adsb_flights = flights
+            st.success(f"Found {len(flights)} flight(s)")
 
-            if flights:
-                st.session_state.adsb_flights = flights
-                st.success(f"Found {len(flights)} flight(s)")
-            else:
-                st.warning("No flights found for this aircraft on this date")
 
     if "adsb_flights" in st.session_state:
         options = []
 
         for f in st.session_state.adsb_flights:
-            dep = f.get("estDepartureAirport", "?")
-            arr = f.get("estArrivalAirport", "?")
+            dep = datetime.utcfromtimestamp(f["firstSeen"]).strftime("%H:%M")
+            arr = datetime.utcfromtimestamp(f["lastSeen"]).strftime("%H:%M")
             options.append(f"{dep} → {arr}")
 
-        selected = st.selectbox("Select ADS-B flight", options)
+        selected_index = st.selectbox(
+            "Select ADS-B flight",
+            range(len(options)),
+            format_func=lambda i: options[i],
+            key="adsb_flight_select"
+        )
 
-        chosen_flight = st.session_state.adsb_flights[
-            options.index(selected)
-        ]
+        selected_flight = st.session_state.adsb_flights[selected_index]
 
-        st.session_state.adsb_prefill = chosen_flight
+        st.session_state.adsb_prefill = {
+            "firstSeen": selected_flight["firstSeen"],
+            "lastSeen": selected_flight["lastSeen"],
+            "registration": selected_registration,
+            "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
+        }
 
 
     with st.form("flight_form"):
@@ -287,8 +331,22 @@ if page == "Add Flight":
         st.markdown("### Aircraft")
 
         col_a1, col_a2 = st.columns(2)
-        aircraft_type = col_a1.text_input("Aircraft Type (e.g. C172)")
-        registration = col_a2.text_input("Registration")
+
+        aircraft_type = AIRCRAFT_LIST[selected_registration]["type"]
+        registration = selected_registration
+
+        st.text_input(
+            "Aircraft Type",
+            value=aircraft_type,
+            disabled=True
+        )
+
+        st.text_input(
+            "Registration",
+            value=registration,
+            disabled=True
+        )
+
         is_single_engine = st.checkbox("Single Engine Aircraft")
         is_fstd = st.checkbox("Flight Training Simulation Device (FSTD / Simulator)")
 
