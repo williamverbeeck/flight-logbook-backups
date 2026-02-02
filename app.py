@@ -9,6 +9,7 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
+from adsb import find_icao24_by_registration, fetch_flights_by_icao24
 
 def require_login():
     if "user" not in st.session_state:
@@ -202,8 +203,67 @@ page = st.sidebar.radio(
 
 if page == "Add Flight":
     st.header("Add New Flight")
+        # ---------------- ADS-B IMPORT ----------------
+    st.markdown("### 🛰️ ADS-B Import (optional)")
+
+    adsb_reg = st.text_input(
+        "Aircraft registration",
+        help="Example: OO-ABC"
+    )
+
+    adsb_date = st.date_input(
+        "Flight date",
+        value=date.today()
+    )
+
+    if st.button("🔍 Search ADS-B flights"):
+        icao24 = find_icao24_by_registration(adsb_reg)
+
+        if not icao24:
+            st.error("Aircraft not found in ADS-B data")
+        else:
+            flights = fetch_flights_by_icao24(icao24, adsb_date)
+
+            if flights:
+                st.session_state.adsb_flights = flights
+                st.success(f"Found {len(flights)} flight(s)")
+            else:
+                st.warning("No flights found for this aircraft on this date")
+
+    if "adsb_flights" in st.session_state:
+        options = []
+
+        for f in st.session_state.adsb_flights:
+            dep = f.get("estDepartureAirport", "?")
+            arr = f.get("estArrivalAirport", "?")
+            options.append(f"{dep} → {arr}")
+
+        selected = st.selectbox("Select ADS-B flight", options)
+
+        chosen_flight = st.session_state.adsb_flights[
+            options.index(selected)
+        ]
+
+        st.session_state.adsb_prefill = chosen_flight
+
 
     with st.form("flight_form"):
+        prefill = st.session_state.get("adsb_prefill", {})
+
+                # --- ADS-B time prefill ---
+        default_dep_time = None
+        default_arr_time = None
+
+        if prefill:
+            if prefill.get("firstSeen"):
+                default_dep_time = datetime.utcfromtimestamp(
+                    prefill["firstSeen"]
+                ).time()
+
+            if prefill.get("lastSeen"):
+                default_arr_time = datetime.utcfromtimestamp(
+                    prefill["lastSeen"]
+                ).time()
 
         st.markdown("### Route & Timing")
         
@@ -216,13 +276,13 @@ if page == "Add Flight":
         with col_left:
             st.subheader("Departure")
             departure = st.text_input("Departure Airport")
-            dep_time = st.time_input("Departure Time")
+            dep_time = st.time_input("Departure Time", value=default_dep_time)
 
         # ➡️ Arrival
         with col_right:
             st.subheader("Arrival")
             arrival = st.text_input("Arrival Airport")
-            arr_time = st.time_input("Arrival Time")
+            arr_time = st.time_input("Arrival Time", value=default_arr_time)
 
         st.markdown("### Aircraft")
 
