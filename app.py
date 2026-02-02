@@ -254,17 +254,6 @@ page = st.sidebar.radio(
 if page == "Add Flight":
     st.header("Add New Flight")
 
-    if st.button("🔍 Search ADS-B flights"):
-        icao24 = AIRCRAFT_LIST[selected_registration]["icao24"].lower()
-
-        flights = fetch_adsbexchange_flights(icao24, adsb_date)
-
-        if not flights:
-            st.warning("No ADS-B flights found for this aircraft on this date.")
-        else:
-            st.success(f"Found {len(flights)} flight(s)")
-            st.session_state.adsb_flights = flights
-
     st.markdown("### 🛰️ ADS-B Import (optional)")
 
     selected_registration = st.selectbox(
@@ -278,6 +267,21 @@ if page == "Add Flight":
         value=date.today(),
         key="adsb_date"
     )
+    
+    if not selected_registration:
+        st.stop()
+
+
+    if st.button("🔍 Search ADS-B flights"):
+        icao24 = AIRCRAFT_LIST[selected_registration]["icao24"].lower()
+
+        flights = fetch_adsbexchange_flights(icao24, adsb_date)
+
+        if not flights:
+            st.warning("No ADS-B flights found for this aircraft on this date.")
+        else:
+            st.success(f"Found {len(flights)} flight(s)")
+            st.session_state.adsb_flights = flights
 
 
     if "adsb_flights" in st.session_state:
