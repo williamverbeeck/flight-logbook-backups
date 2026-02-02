@@ -32,7 +32,6 @@ AIRCRAFT_LIST = {
 }
 
 def fetch_opensky_flights(icao24, flight_date):
-    # Neem een ruime window: noon-to-noon UTC
     start = int(
         datetime.combine(flight_date - timedelta(days=1), datetime.min.time()).timestamp()
     )
@@ -45,19 +44,25 @@ def fetch_opensky_flights(icao24, flight_date):
         f"?icao24={icao24}&begin={start}&end={end}"
     )
 
+    st.write("DEBUG URL:", url)
+
+    user = st.secrets.get("OPENSKY_USER")
+    pwd = st.secrets.get("OPENSKY_PASSWORD")
+
+    st.write("DEBUG OpenSky user present:", bool(user))
+    st.write("DEBUG OpenSky password present:", bool(pwd))
+
     response = requests.get(
-    url,
-    auth=(
-        st.secrets["OPENSKY_USER"],
-        st.secrets["OPENSKY_PASSWORD"]
-    ),
-    timeout=10
+        url,
+        auth=(user, pwd),
+        timeout=10
     )
 
-    if response.status_code != 200:
-        return []
+    st.write("DEBUG status code:", response.status_code)
+    st.write("DEBUG response text:", response.text[:500])
 
-    return response.json()
+    return response.json() if response.status_code == 200 else []
+
 
 
 def require_login():
