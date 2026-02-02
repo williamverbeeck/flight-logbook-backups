@@ -301,43 +301,43 @@ if page == "Add Flight":
 
 
     if "adsb_flights" in st.session_state:
-    valid_flights = []
-    options = []
+        valid_flights = []
+        options = []
 
-    for f in st.session_state.adsb_flights:
-        if not f.get("firstSeen") or not f.get("lastSeen"):
-            continue
+        for f in st.session_state.adsb_flights:
+            if not f.get("firstSeen") or not f.get("lastSeen"):
+                continue
 
-        dep = datetime.fromtimestamp(
-            f["firstSeen"], tz=timezone.utc
-        ).strftime("%H:%M")
+            dep = datetime.fromtimestamp(
+                f["firstSeen"], tz=timezone.utc
+            ).strftime("%H:%M")
 
-        arr = datetime.fromtimestamp(
-            f["lastSeen"], tz=timezone.utc
-        ).strftime("%H:%M")
+            arr = datetime.fromtimestamp(
+                f["lastSeen"], tz=timezone.utc
+            ).strftime("%H:%M")
 
-        options.append(
-            f"{dep} → {arr} | "
-            f"{f.get('estDepartureAirport', '?')} → "
-            f"{f.get('estArrivalAirport', '?')}"
+            options.append(
+                f"{dep} → {arr} | "
+                f"{f.get('estDepartureAirport', '?')} → "
+                f"{f.get('estArrivalAirport', '?')}"
+            )
+            valid_flights.append(f)
+
+        selected_index = st.selectbox(
+            "Select ADS-B flight",
+            range(len(options)),
+            format_func=lambda i: options[i],
+            key="adsb_flight_select"
         )
-        valid_flights.append(f)
 
-    selected_index = st.selectbox(
-        "Select ADS-B flight",
-        range(len(options)),
-        format_func=lambda i: options[i],
-        key="adsb_flight_select"
-    )
+        selected_flight = valid_flights[selected_index]
 
-    selected_flight = valid_flights[selected_index]
-
-    st.session_state.adsb_prefill = {
-        "firstSeen": selected_flight["firstSeen"],
-        "lastSeen": selected_flight["lastSeen"],
-        "registration": selected_registration,
-        "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
-    }
+        st.session_state.adsb_prefill = {
+            "firstSeen": selected_flight["firstSeen"],
+            "lastSeen": selected_flight["lastSeen"],
+            "registration": selected_registration,
+            "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
+        }
 
 
     with st.form("flight_form"):
