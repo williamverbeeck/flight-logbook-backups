@@ -208,10 +208,7 @@ def calculate_block_time(flight_date, dep_time, arr_time):
     return round(minutes / 60, 2)
 
 def fetch_adsbexchange_flights(icao24, flight_date):
-    """
-    Fetch flights for one aircraft on one day using ADSBexchange.
-    All timestamps are UTC.
-    """
+    from datetime import timezone
 
     start = int(
         datetime.combine(flight_date, datetime.min.time())
@@ -232,10 +229,22 @@ def fetch_adsbexchange_flights(icao24, flight_date):
 
     response = requests.get(url, timeout=15)
 
+    # 🔒 Veiligheidschecks
     if response.status_code != 200:
+        st.warning(f"ADSBexchange error: HTTP {response.status_code}")
         return []
 
-    data = response.json()
+    content_type = response.headers.get("Content-Type", "")
+    if "application/json" not in content_type:
+        st.warning("ADSBexchange returned non-JSON response (blocked or empty)")
+        return []
+
+    try:
+        data = response.json()
+    except Exception:
+        st.warning("Failed to decode ADSBexchange response")
+        return []
+
     return data.get("flights", [])
 
 st.set_page_config(
