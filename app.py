@@ -14,7 +14,7 @@ import requests
 
 AIRCRAFT_LIST = {
     "OO-SKA": {
-        "icao24": "44cd61",   # voorbeeld, vervang indien nodig
+        "icao24": "4ca123",   # voorbeeld, vervang indien nodig 44cd61
         "type": "DA40 NG"
     },
     "OO-SKC": {
@@ -262,13 +262,19 @@ if page == "Add Flight":
     if st.button("🔍 Search ADS-B flights"):
         icao24 = AIRCRAFT_LIST[selected_registration]["icao24"]
 
+        st.write("DEBUG ICAO24:", icao24)
+        st.write("DEBUG DATE:", adsb_date)
+
         flights = fetch_opensky_flights(icao24, adsb_date)
 
+        st.write("DEBUG flights raw:", flights)
+
         if not flights:
-            st.warning("No ADS-B flights found for this aircraft on this date.")
+            st.warning("No ADS-B flights returned by OpenSky.")
         else:
-            st.session_state.adsb_flights = flights
             st.success(f"Found {len(flights)} flight(s)")
+            st.session_state.adsb_flights = flights
+
 
 
     if "adsb_flights" in st.session_state:
