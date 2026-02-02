@@ -46,11 +46,5 @@ class Flight(Base):
     night_time = Column(Float)
     ifr_time = Column(Float)
 
-    # Pilot & operation
-    pilot_function = Column(String)
-    flight_type = Column(String)        # VFR / IFR / Y / Z / Z2
-    approach_type = Column(String)
-    approach_count = Column(Integer)
-
     pic_name = Column(String)
     is_fstd = Column(Boolean)

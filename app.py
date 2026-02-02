@@ -78,32 +78,6 @@ def require_login():
 
 require_login()
 
-def auto_backup_and_push():
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    backup_file = f"backups/logbook_{timestamp}.db"
-
-    # 1. Maak backup
-    shutil.copy("data/logbook.db", backup_file)
-
-    # 2. Git add / commit / push
-    subprocess.run(["git", "add", "backups"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.run(
-        ["git", "commit", "-m", f"Auto backup {timestamp}"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-    subprocess.run(
-        ["git", "push"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL
-    )
-if "auto_backup_done" not in st.session_state:
-    try:
-        auto_backup_and_push()
-        st.session_state.auto_backup_done = True
-    except Exception:
-        st.session_state.auto_backup_done = True
-
 def export_logbook_pdf(df):
     file_path = "flight_logbook.pdf"
     c = canvas.Canvas(file_path, pagesize=A4)
@@ -251,10 +225,6 @@ def fetch_opensky_flights(icao24, flight_date):
         },
         timeout=20
     )
-
-    # DEBUG (tijdelijk)
-    st.write("OpenSky REST status:", response.status_code)
-    st.code(response.text[:300])
 
     if response.status_code != 200:
         return []
