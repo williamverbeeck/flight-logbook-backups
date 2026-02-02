@@ -32,8 +32,13 @@ AIRCRAFT_LIST = {
 }
 
 def fetch_opensky_flights(icao24, flight_date):
-    start = int(datetime.combine(flight_date, datetime.min.time()).timestamp())
-    end = int(datetime.combine(flight_date, datetime.max.time()).timestamp())
+    # Neem een ruime window: noon-to-noon UTC
+    start = int(
+        datetime.combine(flight_date - timedelta(days=1), datetime.min.time()).timestamp()
+    )
+    end = int(
+        datetime.combine(flight_date + timedelta(days=1), datetime.max.time()).timestamp()
+    )
 
     url = (
         "https://opensky-network.org/api/flights/aircraft"
