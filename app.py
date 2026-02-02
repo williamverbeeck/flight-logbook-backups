@@ -14,19 +14,19 @@ import requests
 
 AIRCRAFT_LIST = {
     "OO-SKA": {
-        "icao24": "44CD61",   # voorbeeld, vervang indien nodig
+        "icao24": "44cd61",   # voorbeeld, vervang indien nodig
         "type": "DA40 NG"
     },
     "OO-SKC": {
-        "icao24": "44CD63",
+        "icao24": "44cd63",
         "type": "DA40 NG"
     },
     "OO-GQN": {
-        "icao24": "449E2E",
+        "icao24": "449e2e",
         "type": "DA40 NG"
     },
     "OO-MAV": {
-        "icao24": "44B436",
+        "icao24": "44b436",
         "type": "DA40 NG"
     },
 }
