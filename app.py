@@ -9,7 +9,6 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
-import requests
 from opensky_api import OpenSkyApi 
 
 AIRCRAFT_LIST = {
@@ -283,23 +282,26 @@ if page == "Add Flight":
 
 
     if "adsb_flights" in st.session_state:
+        valid_flights = []
         options = []
 
         for f in st.session_state.adsb_flights:
             if not f.firstSeen or not f.lastSeen:
                 continue
 
-
             dep = datetime.fromtimestamp(
                 f.firstSeen, tz=timezone.utc
             ).strftime("%H:%M")
 
-
             arr = datetime.fromtimestamp(
-                f["lastSeen"], tz=timezone.utc
+                f.lastSeen, tz=timezone.utc
             ).strftime("%H:%M")
 
-            options.append(f"{dep} → {arr}")
+            options.append(
+                f"{dep} → {arr} | "
+                f"{f.estDepartureAirport or '?'} → {f.estArrivalAirport or '?'}"
+            )
+            valid_flights.append(f)
 
         selected_index = st.selectbox(
             "Select ADS-B flight",
@@ -308,7 +310,7 @@ if page == "Add Flight":
             key="adsb_flight_select"
         )
 
-        selected_flight = st.session_state.adsb_flights[selected_index]
+        selected_flight = valid_flights[selected_index]
 
         st.session_state.adsb_prefill = {
             "firstSeen": selected_flight.firstSeen,
