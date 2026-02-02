@@ -3,13 +3,12 @@ from database import SessionLocal
 from models import Flight
 import pandas as pd
 import shutil
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 import subprocess
 import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
-from adsb import find_icao24_by_registration, fetch_flights_by_icao24
 import requests
 
 AIRCRAFT_LIST = {
@@ -30,40 +29,6 @@ AIRCRAFT_LIST = {
         "type": "DA40 NG"
     },
 }
-
-def fetch_opensky_flights(icao24, flight_date):
-    start = int(
-        datetime.combine(flight_date - timedelta(days=1), datetime.min.time()).timestamp()
-    )
-    end = int(
-        datetime.combine(flight_date + timedelta(days=1), datetime.max.time()).timestamp()
-    )
-
-    url = (
-        "https://opensky-network.org/api/flights/aircraft"
-        f"?icao24={icao24}&begin={start}&end={end}"
-    )
-
-    st.write("DEBUG URL:", url)
-
-    user = st.secrets.get("OPENSKY_USER")
-    pwd = st.secrets.get("OPENSKY_PASSWORD")
-
-    st.write("DEBUG OpenSky user present:", bool(user))
-    st.write("DEBUG OpenSky password present:", bool(pwd))
-
-    response = requests.get(
-        url,
-        auth=(user, pwd),
-        timeout=10
-    )
-
-    st.write("DEBUG status code:", response.status_code)
-    st.write("DEBUG response text:", response.text[:500])
-
-    return response.json() if response.status_code == 200 else []
-
-
 
 def require_login():
     if "user" not in st.session_state:
@@ -242,6 +207,37 @@ def calculate_block_time(flight_date, dep_time, arr_time):
     minutes = (arr_dt - dep_dt).total_seconds() / 60
     return round(minutes / 60, 2)
 
+def fetch_adsbexchange_flights(icao24, flight_date):
+    """
+    Fetch flights for one aircraft on one day using ADSBexchange.
+    All timestamps are UTC.
+    """
+
+    start = int(
+        datetime.combine(flight_date, datetime.min.time())
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+
+    end = int(
+        datetime.combine(flight_date, datetime.max.time())
+        .replace(tzinfo=timezone.utc)
+        .timestamp()
+    )
+
+    url = (
+        "https://api.adsbexchange.com/api/v2/flight-history/icao/"
+        f"{icao24.lower()}/{start}/{end}"
+    )
+
+    response = requests.get(url, timeout=15)
+
+    if response.status_code != 200:
+        return []
+
+    data = response.json()
+    return data.get("flights", [])
+
 st.set_page_config(
     page_title="Flight Logbook",
     layout="wide"
@@ -258,6 +254,17 @@ page = st.sidebar.radio(
 if page == "Add Flight":
     st.header("Add New Flight")
 
+    if st.button("🔍 Search ADS-B flights"):
+        icao24 = AIRCRAFT_LIST[selected_registration]["icao24"].lower()
+
+        flights = fetch_adsbexchange_flights(icao24, adsb_date)
+
+        if not flights:
+            st.warning("No ADS-B flights found for this aircraft on this date.")
+        else:
+            st.success(f"Found {len(flights)} flight(s)")
+            st.session_state.adsb_flights = flights
+
     st.markdown("### 🛰️ ADS-B Import (optional)")
 
     selected_registration = st.selectbox(
@@ -272,30 +279,22 @@ if page == "Add Flight":
         key="adsb_date"
     )
 
-    if st.button("🔍 Search ADS-B flights"):
-        icao24 = AIRCRAFT_LIST[selected_registration]["icao24"]
-
-        st.write("DEBUG ICAO24:", icao24)
-        st.write("DEBUG DATE:", adsb_date)
-
-        flights = fetch_opensky_flights(icao24, adsb_date)
-
-        st.write("DEBUG flights raw:", flights)
-
-        if not flights:
-            st.warning("No ADS-B flights returned by OpenSky.")
-        else:
-            st.success(f"Found {len(flights)} flight(s)")
-            st.session_state.adsb_flights = flights
-
-
 
     if "adsb_flights" in st.session_state:
         options = []
 
         for f in st.session_state.adsb_flights:
-            dep = datetime.utcfromtimestamp(f["firstSeen"]).strftime("%H:%M")
-            arr = datetime.utcfromtimestamp(f["lastSeen"]).strftime("%H:%M")
+            if not f.get("firstSeen") or not f.get("lastSeen"):
+                continue
+
+            dep = datetime.fromtimestamp(
+                f["firstSeen"], tz=timezone.utc
+            ).strftime("%H:%M")
+
+            arr = datetime.fromtimestamp(
+                f["lastSeen"], tz=timezone.utc
+            ).strftime("%H:%M")
+
             options.append(f"{dep} → {arr}")
 
         selected_index = st.selectbox(
