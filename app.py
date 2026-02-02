@@ -207,9 +207,7 @@ def calculate_block_time(flight_date, dep_time, arr_time):
     minutes = (arr_dt - dep_dt).total_seconds() / 60
     return round(minutes / 60, 2)
 
-def fetch_adsbexchange_flights(icao24, flight_date):
-    from datetime import timezone
-
+def fetch_opensky_flights(icao24, flight_date, username, password):
     start = int(
         datetime.combine(flight_date, datetime.min.time())
         .replace(tzinfo=timezone.utc)
@@ -222,30 +220,25 @@ def fetch_adsbexchange_flights(icao24, flight_date):
         .timestamp()
     )
 
-    url = (
-        "https://api.adsbexchange.com/api/v2/flight-history/icao/"
-        f"{icao24.lower()}/{start}/{end}"
+    url = "https://opensky-network.org/api/flights/aircraft"
+    params = {
+        "icao24": icao24.lower(),
+        "begin": start,
+        "end": end
+    }
+
+    response = requests.get(
+        url,
+        params=params,
+        auth=(username, password),
+        timeout=15
     )
 
-    response = requests.get(url, timeout=15)
-
-    # 🔒 Veiligheidschecks
     if response.status_code != 200:
-        st.warning(f"ADSBexchange error: HTTP {response.status_code}")
+        st.warning(f"OpenSky error {response.status_code}")
         return []
 
-    content_type = response.headers.get("Content-Type", "")
-    if "application/json" not in content_type:
-        st.warning("ADSBexchange returned non-JSON response (blocked or empty)")
-        return []
-
-    try:
-        data = response.json()
-    except Exception:
-        st.warning("Failed to decode ADSBexchange response")
-        return []
-
-    return data.get("flights", [])
+    return response.json()
 
 st.set_page_config(
     page_title="Flight Logbook",
