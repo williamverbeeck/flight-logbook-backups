@@ -45,7 +45,15 @@ def fetch_opensky_flights(icao24, flight_date):
         f"?icao24={icao24}&begin={start}&end={end}"
     )
 
-    response = requests.get(url, timeout=10)
+    response = requests.get(
+    url,
+    auth=(
+        st.secrets["OPENSKY_USER"],
+        st.secrets["OPENSKY_PASSWORD"]
+    ),
+    timeout=10
+    )
+
     if response.status_code != 200:
         return []
 
