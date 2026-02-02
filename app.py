@@ -10,6 +10,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
 import requests
+from opensky_api import OpenSkyApi 
 
 AIRCRAFT_LIST = {
     "OO-SKA": {
@@ -196,19 +197,13 @@ def export_logbook_pdf(df):
     c.save()
     return file_path
 
-def calculate_block_time(flight_date, dep_time, arr_time):
-    dep_dt = datetime.combine(flight_date, dep_time)
-    arr_dt = datetime.combine(flight_date, arr_time)
+def fetch_opensky_flights(icao24, flight_date):
+    api = OpenSkyApi(
+        st.secrets["OPENSKY_USER"],
+        st.secrets["OPENSKY_PASS"]
+    )
 
-    # Over midnight
-    if arr_dt <= dep_dt:
-        arr_dt += timedelta(days=1)
-
-    minutes = (arr_dt - dep_dt).total_seconds() / 60
-    return round(minutes / 60, 2)
-
-def fetch_opensky_flights(icao24, flight_date, username, password):
-    start = int(
+    begin = int(
         datetime.combine(flight_date, datetime.min.time())
         .replace(tzinfo=timezone.utc)
         .timestamp()
@@ -220,25 +215,27 @@ def fetch_opensky_flights(icao24, flight_date, username, password):
         .timestamp()
     )
 
-    url = "https://opensky-network.org/api/flights/aircraft"
-    params = {
-        "icao24": icao24.lower(),
-        "begin": start,
-        "end": end
-    }
-
-    response = requests.get(
-        url,
-        params=params,
-        auth=(username, password),
-        timeout=15
+    flights = api.get_flights_by_aircraft(
+        icao24.lower(),
+        begin,
+        end
     )
 
-    if response.status_code != 200:
-        st.warning(f"OpenSky error {response.status_code}")
+    if not flights:
         return []
 
-    return response.json()
+    return flights
+
+def calculate_block_time(flight_date, dep_time, arr_time):
+    dep_dt = datetime.combine(flight_date, dep_time)
+    arr_dt = datetime.combine(flight_date, arr_time)
+
+    # Over midnight
+    if arr_dt <= dep_dt:
+        arr_dt += timedelta(days=1)
+
+    minutes = (arr_dt - dep_dt).total_seconds() / 60
+    return round(minutes / 60, 2)
 
 st.set_page_config(
     page_title="Flight Logbook",
@@ -276,11 +273,10 @@ if page == "Add Flight":
 
     if st.button("🔍 Search ADS-B flights"):
         icao24 = AIRCRAFT_LIST[selected_registration]["icao24"].lower()
-
-        flights = fetch_adsbexchange_flights(icao24, adsb_date)
+        flights = fetch_opensky_flights(icao24, adsb_date)
 
         if not flights:
-            st.warning("No ADS-B flights found for this aircraft on this date.")
+            st.warning("No OpenSky flights found for this aircraft on this date.")
         else:
             st.success(f"Found {len(flights)} flight(s)")
             st.session_state.adsb_flights = flights
@@ -290,12 +286,14 @@ if page == "Add Flight":
         options = []
 
         for f in st.session_state.adsb_flights:
-            if not f.get("firstSeen") or not f.get("lastSeen"):
+            if not f.firstSeen or not f.lastSeen:
                 continue
 
+
             dep = datetime.fromtimestamp(
-                f["firstSeen"], tz=timezone.utc
+                f.firstSeen, tz=timezone.utc
             ).strftime("%H:%M")
+
 
             arr = datetime.fromtimestamp(
                 f["lastSeen"], tz=timezone.utc
@@ -313,11 +311,12 @@ if page == "Add Flight":
         selected_flight = st.session_state.adsb_flights[selected_index]
 
         st.session_state.adsb_prefill = {
-            "firstSeen": selected_flight["firstSeen"],
-            "lastSeen": selected_flight["lastSeen"],
+            "firstSeen": selected_flight.firstSeen,
+            "lastSeen": selected_flight.lastSeen,
             "registration": selected_registration,
             "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
         }
+
 
 
     with st.form("flight_form"):
