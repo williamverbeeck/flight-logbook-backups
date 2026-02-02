@@ -9,7 +9,7 @@ import os
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from supabase_client import supabase
-from opensky_api import OpenSkyApi 
+import requests
 
 AIRCRAFT_LIST = {
     "OO-SKA": {
@@ -197,11 +197,6 @@ def export_logbook_pdf(df):
     return file_path
 
 def fetch_opensky_flights(icao24, flight_date):
-    api = OpenSkyApi(
-        st.secrets["OPENSKY_USER"],
-        st.secrets["OPENSKY_PASS"]
-    )
-
     begin = int(
         datetime.combine(flight_date, datetime.min.time())
         .replace(tzinfo=timezone.utc)
@@ -214,16 +209,40 @@ def fetch_opensky_flights(icao24, flight_date):
         .timestamp()
     )
 
-    flights = api.get_flights_by_aircraft(
-        icao24.lower(),
-        begin,
-        end
+    url = "https://opensky-network.org/api/flights/aircraft"
+
+    params = {
+        "icao24": icao24.lower(),
+        "begin": begin,
+        "end": end
+    }
+
+    response = requests.get(
+        url,
+        params=params,
+        auth=(
+            st.secrets["OPENSKY_USER"],
+            st.secrets["OPENSKY_PASS"]
+        ),
+        timeout=20
     )
 
-    if not flights:
+    # --- DEBUG (mag je later verwijderen) ---
+    st.write("OpenSky status:", response.status_code)
+    st.write("OpenSky content-type:", response.headers.get("Content-Type"))
+    st.code(response.text[:500])
+    # ---------------------------------------
+
+    if response.status_code != 200:
         return []
 
-    return flights
+    if "application/json" not in response.headers.get("Content-Type", ""):
+        return []
+
+    try:
+        return response.json()
+    except Exception:
+        return []
 
 def calculate_block_time(flight_date, dep_time, arr_time):
     dep_dt = datetime.combine(flight_date, dep_time)
@@ -282,43 +301,43 @@ if page == "Add Flight":
 
 
     if "adsb_flights" in st.session_state:
-        valid_flights = []
-        options = []
+    valid_flights = []
+    options = []
 
-        for f in st.session_state.adsb_flights:
-            if not f.firstSeen or not f.lastSeen:
-                continue
+    for f in st.session_state.adsb_flights:
+        if not f.get("firstSeen") or not f.get("lastSeen"):
+            continue
 
-            dep = datetime.fromtimestamp(
-                f.firstSeen, tz=timezone.utc
-            ).strftime("%H:%M")
+        dep = datetime.fromtimestamp(
+            f["firstSeen"], tz=timezone.utc
+        ).strftime("%H:%M")
 
-            arr = datetime.fromtimestamp(
-                f.lastSeen, tz=timezone.utc
-            ).strftime("%H:%M")
+        arr = datetime.fromtimestamp(
+            f["lastSeen"], tz=timezone.utc
+        ).strftime("%H:%M")
 
-            options.append(
-                f"{dep} → {arr} | "
-                f"{f.estDepartureAirport or '?'} → {f.estArrivalAirport or '?'}"
-            )
-            valid_flights.append(f)
-
-        selected_index = st.selectbox(
-            "Select ADS-B flight",
-            range(len(options)),
-            format_func=lambda i: options[i],
-            key="adsb_flight_select"
+        options.append(
+            f"{dep} → {arr} | "
+            f"{f.get('estDepartureAirport', '?')} → "
+            f"{f.get('estArrivalAirport', '?')}"
         )
+        valid_flights.append(f)
 
-        selected_flight = valid_flights[selected_index]
+    selected_index = st.selectbox(
+        "Select ADS-B flight",
+        range(len(options)),
+        format_func=lambda i: options[i],
+        key="adsb_flight_select"
+    )
 
-        st.session_state.adsb_prefill = {
-            "firstSeen": selected_flight.firstSeen,
-            "lastSeen": selected_flight.lastSeen,
-            "registration": selected_registration,
-            "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
-        }
+    selected_flight = valid_flights[selected_index]
 
+    st.session_state.adsb_prefill = {
+        "firstSeen": selected_flight["firstSeen"],
+        "lastSeen": selected_flight["lastSeen"],
+        "registration": selected_registration,
+        "aircraft_type": AIRCRAFT_LIST[selected_registration]["type"],
+    }
 
 
     with st.form("flight_form"):
