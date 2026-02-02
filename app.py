@@ -196,7 +196,37 @@ def export_logbook_pdf(df):
     c.save()
     return file_path
 
+def get_opensky_access_token():
+    url = "https://opensky-network.org/api/oauth/token"
+
+    response = requests.post(
+        url,
+        data={"grant_type": "client_credentials"},
+        auth=(
+            st.secrets["OPENSKY_CLIENT_ID"],
+            st.secrets["OPENSKY_CLIENT_SECRET"]
+        ),
+        timeout=15
+    )
+
+    if response.status_code != 200:
+        st.error(f"OAuth token error {response.status_code}")
+        st.code(response.text)
+        return None
+
+    data = response.json()
+    return data["access_token"]
+
+@st.cache_data(ttl=3500)  # ~1 uur
+def get_cached_opensky_token():
+    return get_opensky_access_token()
+
+
 def fetch_opensky_flights(icao24, flight_date):
+    token = get_cached_opensky_token()
+    if not token:
+        return []
+
     begin = int(
         datetime.combine(flight_date, datetime.min.time())
         .replace(tzinfo=timezone.utc)
@@ -209,40 +239,27 @@ def fetch_opensky_flights(icao24, flight_date):
         .timestamp()
     )
 
-    url = "https://opensky-network.org/api/flights/aircraft"
-
-    params = {
-        "icao24": icao24.lower(),
-        "begin": begin,
-        "end": end
-    }
-
     response = requests.get(
-        url,
-        params=params,
-        auth=(
-            st.secrets["OPENSKY_USER"],
-            st.secrets["OPENSKY_PASS"]
-        ),
+        "https://opensky-network.org/api/flights/aircraft",
+        headers={
+            "Authorization": f"Bearer {token}"
+        },
+        params={
+            "icao24": icao24.lower(),
+            "begin": begin,
+            "end": end
+        },
         timeout=20
     )
 
-    # --- DEBUG (mag je later verwijderen) ---
-    st.write("OpenSky status:", response.status_code)
-    st.write("OpenSky content-type:", response.headers.get("Content-Type"))
-    st.code(response.text[:500])
-    # ---------------------------------------
+    # DEBUG (tijdelijk)
+    st.write("OpenSky REST status:", response.status_code)
+    st.code(response.text[:300])
 
     if response.status_code != 200:
         return []
 
-    if "application/json" not in response.headers.get("Content-Type", ""):
-        return []
-
-    try:
-        return response.json()
-    except Exception:
-        return []
+    return response.json()
 
 def calculate_block_time(flight_date, dep_time, arr_time):
     dep_dt = datetime.combine(flight_date, dep_time)
